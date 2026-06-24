@@ -370,4 +370,5 @@ The committed `workflow/study-planner-agent.json` is **sanitized**:
 
 ---
 
-**Questions?** See [docs/build-notes.md](docs/build-notes.md) for architecture and troubleshooting details.
+**Questions?** See [docs/build-notes.md](docs/build-notes.md) for architecture and troubleshooting details.#   s t u d y - p l a n n e r - a g e n t  
+ 
