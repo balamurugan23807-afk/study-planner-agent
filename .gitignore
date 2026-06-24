@@ -1,0 +1,24 @@
+# Node modules
+node_modules/
+
+# n8n local database and credentials (contains sensitive data)
+.n8n/
+
+# Environment variables (if added locally)
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Workflow export may be regenerated; keep it for reference
+# If adding personal credentials to workflow JSON, add this line:
+# workflow/study-planner-agent.json

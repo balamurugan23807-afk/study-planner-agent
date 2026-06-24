@@ -1,0 +1,17 @@
+WEEK TAG: WEEK-2026-06-25
+
+Thursday 7:45 AM - 9:15 AM: Java Arrays for DSA
+Tasks:
+- revise arrays in Java, traversal, max/min/sum
+- write array sum program
+- write max/min in array
+
+Thursday 9:45 AM - 11:45 AM: DSA Arrays Foundation
+Tasks:
+- revise array traversal, searching, frequency counting
+- solve 3 array problems
+- document learnings in notebook
+
+WEEKLY MILESTONES
+- Finish DSA Arrays foundation by Thursday
+- Solve at least 10 DSA array problems this week

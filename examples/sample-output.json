@@ -1,0 +1,34 @@
+{
+  "events": [
+    {
+      "title": "Java Arrays for DSA",
+      "start": "2026-06-27T07:45:00+05:30",
+      "end": "2026-06-27T09:15:00+05:30",
+      "description": "Revise arrays in Java including traversal, max/min/sum operations. Write core array programs.",
+      "category": "Java",
+      "location": "",
+      "reminder_minutes": 15
+    },
+    {
+      "title": "DSA Arrays Foundation",
+      "start": "2026-06-27T09:45:00+05:30",
+      "end": "2026-06-27T11:45:00+05:30",
+      "description": "Revise array traversal, searching, and frequency counting. Solve 3 array problems and document learnings.",
+      "category": "DSA",
+      "location": "",
+      "reminder_minutes": 15
+    }
+  ],
+  "tasks": [
+    "revise arrays in Java, traversal, max/min/sum",
+    "write array sum program",
+    "write max/min in array",
+    "revise array traversal, searching, frequency counting",
+    "solve 3 array problems",
+    "document learnings in notebook"
+  ],
+  "milestones": [
+    "Finish DSA Arrays foundation by Thursday",
+    "Solve at least 10 DSA array problems this week"
+  ]
+}
