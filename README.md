@@ -1,35 +1,294 @@
 # Study Planner Agent
 
-An AI-powered weekly planner automation built with **n8n**, **LLM**, **Google Calendar**, and **Google Tasks**. Converts a natural-language weekly study plan into structured calendar events, tasks, and milestones.
+An AI-powered weekly study planner built with **n8n**, **LLM**, **Google Calendar**, and **Google Tasks**.
 
-**Status**: Local-first automation workflow for Computer Science students. Not a hosted SaaS product.
+It converts a natural-language weekly study plan into:
 
-## Table of Contents
+* **Google Calendar events** for scheduled study / work sessions
+* **Google Tasks tasks** for actionable checklist items
+* **Google Tasks milestones** for weekly goals and deadline-based targets
 
-- [What It Does](#what-it-does)
-- [Workflow Architecture](#workflow-architecture)
-- [Local Execution Model](#local-execution-model)
-- [Installation & Setup](#installation--setup)
-- [Usage](#usage)
-- [Input & Output Formats](#input--output-formats)
-- [Debugging History](#debugging-history)
-- [Project Structure](#project-structure)
-- [Security Notes](#security-notes)
-- [Future Improvements](#future-improvements)
+**Status:** Local-first automation workflow for a Computer Science student.
+This is a real workflow automation project, not a hosted SaaS product.
 
-## What It Does
+---
 
-This project automates weekly study planning for a Computer Science student:
+# Table of Contents
 
-1. **Accept**: Natural-language weekly study plan (text input)
-2. **Parse**: Extract events, tasks, and milestones using LLM + JavaScript cleanup
-3. **Route**: 
-   - Events → Google Calendar (with timezone support)
-   - Tasks → Google Tasks (daily task list)
-   - Milestones → Google Tasks (separate milestone list)
+* [What It Does](#what-it-does)
+* [Workflow Architecture](#workflow-architecture)
+* [Local Execution Model](#local-execution-model)
+* [Tech Stack](#tech-stack)
+* [Installation and Setup](#installation-and-setup)
+* [Usage](#usage)
+* [Input and Output Formats](#input-and-output-formats)
+* [Debugging History](#debugging-history)
+* [Project Structure](#project-structure)
+* [Security Notes](#security-notes)
+* [Current Limitations](#current-limitations)
+* [Future Improvements](#future-improvements)
 
-**Input example** (plain text):
+---
+
+# What It Does
+
+This project automates weekly study planning for a Computer Science student.
+
+## Workflow purpose
+
+Instead of manually creating calendar events, tasks, and milestone reminders every week, the workflow accepts a **planner-style weekly study plan** in natural language and turns it into structured execution items.
+
+## It performs three jobs
+
+1. **Accept weekly plan text**
+
+   * Example: study sessions, task bullets, weekly targets, certification blocks
+
+2. **Parse the plan into structured outputs**
+
+   * `events` → scheduled time blocks
+   * `tasks` → actionable work items
+   * `milestones` → weekly goals / deadline-based targets
+
+3. **Send the results to Google tools**
+
+   * Events → **Google Calendar**
+   * Tasks → **Google Tasks**
+   * Milestones → **Google Tasks** (usually a separate milestone-oriented task list)
+
+---
+
+# Workflow Architecture
+
+The workflow is built in **n8n** and follows this flow:
+
+```text
+Webhook (POST)
+  ↓
+Basic LLM Chain
+  ↓
+Code in JavaScript (parse + cleanup)
+  ↓
+Split into 3 branches
+  ├─ Events branch      → Google Calendar Create Event
+  ├─ Tasks branch       → Google Tasks Create Task
+  └─ Milestones branch  → Google Tasks Create Task
 ```
+
+## Why the JavaScript parser node exists
+
+The LLM output was not always clean JSON. During development, the model sometimes returned:
+
+* ```json markdown wrappers
+  ```
+* extra text before or after the JSON
+* formatting noise
+
+Because of that, a **JavaScript cleanup / parse node** was added to:
+
+* strip markdown fences
+* locate the first JSON object
+* parse it safely
+* return clean `events`, `tasks`, and `milestones` arrays for downstream nodes
+
+---
+
+# Local Execution Model
+
+This project currently runs **locally** on the laptop using **n8n**.
+
+## Current local workflow model
+
+* n8n is started manually from terminal / VS Code
+* local n8n UI runs at:
+
+```text
+http://localhost:5678
+```
+
+* the planner workflow is triggered through a **webhook**
+* a typical test webhook URL looks like:
+
+```text
+http://localhost:5678/webhook-test/calendar-agent
+```
+
+## Important note
+
+Because the workflow is local-first:
+
+* your laptop must be **powered on**
+* **n8n must be running**
+* the workflow must be available locally for the webhook to work
+
+This repo documents the **local version** of the system. A hosted / Telegram-triggered version can be added later.
+
+---
+
+# Tech Stack
+
+* **n8n** — workflow automation
+* **Groq / LLM** — converts planner text into structured JSON
+* **JavaScript (n8n Code node)** — cleans and parses LLM output
+* **Google Calendar** — stores scheduled study sessions as events
+* **Google Tasks** — stores tasks and milestones
+* **PowerShell** — used to send weekly planner text to the local webhook
+
+---
+
+# Installation and Setup
+
+## Prerequisites
+
+Before running the workflow, you need:
+
+* **Node.js 18+**
+* **n8n**
+* **Google account** with Calendar + Tasks access
+* **Groq API key** or equivalent LLM provider credential
+* **PowerShell** (Windows) or another way to send HTTP POST requests
+
+---
+
+## Step 1 — Install and start n8n
+
+Install n8n globally:
+
+```bash
+npm install -g n8n
+```
+
+Start n8n:
+
+```bash
+n8n
+```
+
+Open the local UI at:
+
+```text
+http://localhost:5678
+```
+
+---
+
+## Step 2 — Import the workflow
+
+1. Open n8n
+2. Go to **Workflows**
+3. Import the workflow file from:
+
+```text
+workflow/study-planner-agent.json
+```
+
+4. Save the workflow
+
+> **Important:** The workflow JSON in this repository should be a **sanitized export** of the real workflow.
+> Remove personal test data, pinned example payloads, personal email references, and any credential-specific details before publishing.
+
+---
+
+## Step 3 — Configure credentials in n8n
+
+### A) LLM credential
+
+Create your LLM credential (for example Groq) inside n8n.
+
+Typical flow:
+
+1. Open **Credentials**
+2. Create a new LLM / Groq credential
+3. paste your API key
+4. attach it to the LLM node in the workflow
+
+### B) Google Calendar credential
+
+Create a **Google Calendar OAuth2** credential and authorize the Google account where you want events to be created.
+
+### C) Google Tasks credential
+
+Create a **Google Tasks OAuth2** credential and authorize the same account (or whichever account you want to use for tasks).
+
+---
+
+## Step 4 — Set your Google Task list IDs
+
+The workflow uses **Google Tasks** for:
+
+* normal study tasks
+* milestones
+
+You can use:
+
+* **one task list for tasks**
+* **another task list for milestones**
+
+After importing the workflow:
+
+1. open the **Create Task** node used for tasks
+2. set the correct **task list ID / task list selection**
+3. open the **Create Task** node used for milestones
+4. set the milestone task list there as well
+
+---
+
+## Step 5 — Check the webhook URL
+
+Open the **Webhook** node in n8n and copy the local test webhook URL.
+It will look similar to:
+
+```text
+http://localhost:5678/webhook-test/calendar-agent
+```
+
+This is the endpoint that receives your weekly plan text.
+
+---
+
+# Usage
+
+The basic usage flow is:
+
+1. start n8n locally
+2. open the Study Planner Agent workflow
+3. make sure the webhook is ready to receive a request
+4. send a weekly planner text to the webhook
+5. let the workflow create:
+
+   * Google Calendar events
+   * Google Tasks tasks
+   * Google Tasks milestones
+
+---
+
+## Option 1 — Use the included PowerShell script
+
+The repository includes:
+
+```text
+scripts/send_week_plan.ps1
+```
+
+Use that script to send a weekly plan to the local webhook.
+
+You can either:
+
+* keep the weekly plan text directly inside the script, **or**
+* modify the script to read from a text file such as `examples/sample-week-plan.txt`
+
+Run it from PowerShell after updating the plan and webhook URL if needed.
+
+---
+
+## Option 2 — Manual PowerShell request
+
+Example:
+
+```powershell
+$plan = @"
+WEEK TAG: WEEK-2026-06-25
+
 Thursday 7:45 AM - 9:15 AM: Java Arrays for DSA
 Tasks:
 - revise arrays in Java
@@ -37,338 +296,349 @@ Tasks:
 
 WEEKLY MILESTONES
 - Finish DSA Arrays by Thursday
-```
+"@
 
-**Output** (Google Calendar events + Tasks created automatically)
+$body = @{
+  plan_text = $plan
+} | ConvertTo-Json
 
-## Workflow Architecture
-
-```
-Webhook (POST) 
-  ↓
-Basic LLM Chain (Groq model)
-  ↓
-Code in JavaScript (parse + cleanup)
-  ↓ (splits into 3 branches)
-  ├→ Split Events → Google Calendar Create Event
-  ├→ Split Tasks → Google Tasks Create Task
-  └→ Split Milestones → Google Tasks Create Task (milestone list)
-```
-
-## Local Execution Model
-
-This workflow runs **locally** on your machine:
-
-- **n8n** runs at `http://localhost:5678`
-- Workflow is triggered via **HTTP POST webhook**
-- Your laptop must be powered on for webhooks to work
-- No cloud hosting required (currently)
-
-## Installation & Setup
-
-### Prerequisites
-
-- Node.js 18+ (for n8n)
-- PowerShell 5.1+ (Windows) or bash/zsh (macOS/Linux)
-- Active Groq API account (free tier available at [groq.com](https://groq.com))
-- Google account with Calendar and Tasks access
-
-### Step 1: Install and Start n8n
-
-```bash
-npm install -g n8n
-n8n
-```
-
-Access the UI at `http://localhost:5678`
-
-### Step 2: Configure LLM Credentials
-
-1. Go to **Settings** → **Credentials**
-2. Create a new **Groq API** credential
-3. Paste your Groq API key
-4. Name it "Groq account"
-
-### Step 3: Configure Google Services
-
-1. Create **Google Calendar OAuth2** credential
-   - Authorize your Google account
-   - Select a calendar (or use primary)
-   
-2. Create **Google Tasks OAuth2** credential
-   - Authorize the same Google account
-   - Grant Google Tasks access
-
-3. In Google Tasks, create or identify:
-   - A task list for **daily tasks** (get its ID)
-   - A task list for **milestones** (get its ID)
-   - You can use the same list for both if preferred
-
-### Step 4: Import Workflow
-
-1. In n8n UI, go to **Workflows**
-2. Click **Import from File**
-3. Upload `workflow/study-planner-agent.json`
-4. Update the workflow:
-   - Edit "Create a task" node: paste your **tasks list ID**
-   - Edit "Create a task1" node: paste your **milestones list ID**
-5. Save and activate the workflow
-
-### Step 5: Get Webhook URL
-
-After importing:
-1. Open the "Webhook" node
-2. Copy the webhook URL (something like `http://localhost:5678/webhook-test/calendar-agent`)
-3. Keep this URL handy for testing
-
-## Usage
-
-### Option 1: PowerShell Script (Windows)
-
-```powershell
-cd scripts
-.\send_week_plan.ps1
-```
-
-This script:
-- Reads `examples/sample-week-plan.txt`
-- Sends it to the local webhook
-- Creates calendar events and tasks
-
-### Option 2: Manual POST Request
-
-**Using PowerShell:**
-```powershell
-$plan = Get-Content -Raw "examples\sample-week-plan.txt"
-$body = @{ plan_text = $plan } | ConvertTo-Json
 Invoke-RestMethod -Uri "http://localhost:5678/webhook-test/calendar-agent" `
-    -Method Post -ContentType "application/json" -Body $body
+  -Method Post `
+  -ContentType "application/json" `
+  -Body $body
 ```
-
-**Using curl:**
-```bash
-curl -X POST http://localhost:5678/webhook-test/calendar-agent \
-  -H "Content-Type: application/json" \
-  -d '{"plan_text":"your plan here"}'
-```
-
-**Using n8n UI:**
-1. Open the workflow
-2. Click the Webhook node
-3. Click "Test Trigger" or "Execute Webhook"
-4. Paste test data in the request body
-
-### Example: Verify in Google Calendar
-
-After running, check:
-- **Google Calendar**: New events should appear (with Asia/Kolkata timezone)
-- **Google Tasks**: New tasks and milestones should appear in respective lists
-
-## Input & Output Formats
-
-### Input Format
-
-Send a **POST request** with JSON body:
-
-```json
-{
-  "plan_text": "WEEK TAG: WEEK-2026-06-25\n\nThursday 7:45 AM - 9:15 AM: Java Arrays\nTasks:\n- revise arrays\n- write programs\n\nWEEKLY MILESTONES\n- Complete arrays"
-}
-```
-
-**Text format rules:**
-- Date/time: Natural language ("Thursday 7:45 AM - 9:15 AM")
-- Sessions: "HH:MM AM/PM - HH:MM AM/PM: [Title]"
-- Tasks: Bullet list starting with "-"
-- Milestones: Section marked "WEEKLY MILESTONES"
-
-See `examples/sample-week-plan.txt` for a full example.
-
-### LLM Output Format (Internal)
-
-The LLM returns structured JSON:
-
-```json
-{
-  "events": [
-    {
-      "title": "Java Arrays for DSA",
-      "start": "2026-06-27T07:45:00+05:30",
-      "end": "2026-06-27T09:15:00+05:30",
-      "description": "Revise arrays in Java and core programs.",
-      "category": "Java",
-      "location": "",
-      "reminder_minutes": 15
-    }
-  ],
-  "tasks": [
-    "revise arrays in Java",
-    "write array sum program"
-  ],
-  "milestones": [
-    "Finish DSA Arrays by Thursday"
-  ]
-}
-```
-
-**Important**: 
-- `start` and `end` are ISO 8601 datetime strings with timezone
-- Timezone is **Asia/Kolkata** (hardcoded in workflow and prompt)
-- Category examples: Java, DSA, SQL, React, Project, Exam Prep, etc.
-
-### Google Calendar Event
-
-Each event is created with:
-- Title
-- Start/End time (with timezone)
-- Description
-- Location (optional)
-- Reminder (15 minutes before)
-
-### Google Tasks
-
-- **Daily tasks**: Individual checklist items created in tasks list
-- **Milestones**: Same structure but stored in separate milestone list
-
-## Debugging History
-
-### Issue 1: Timezone Mismatch
-
-**Problem**: Calendar events were created in UTC instead of the student's timezone, causing 5.5-hour time shift.
-
-**Fix**: 
-- Hardcoded timezone to **Asia/Kolkata** in:
-  - LLM system prompt
-  - Event structure (ISO datetime with `+05:30`)
-  - Google Calendar node configuration
-
-**Lesson**: Always explicitly set timezone; don't rely on defaults.
-
-### Issue 2: LLM Output Formatting
-
-**Problem**: The Groq model sometimes returned:
-- `\`\`\`json` markdown fences
-- Extra text before or after JSON
-- Trailing comments or explanations
-- Invalid JSON syntax
-
-**Fix**: Added `code/parse_llm_output.js` that:
-- Removes markdown fences (`\`\`\`json`, `\`\`\``)
-- Locates the first `{` and last `}` in the response
-- Extracts only the JSON object
-- Safely parses it
-- Returns `events`, `tasks`, `milestones` arrays
-
-**Lesson**: Always validate and clean LLM output; don't assume perfect JSON.
-
-### Issue 3: Google Tasks Field Errors
-
-**Problem**: Task creation failed with "Invalid Argument" errors due to:
-- Incorrect date formatting for `due` field
-- Missing required task list ID
-- Confusion between task lists and task items
-
-**Fix**:
-- Use RFC3339 format for due dates: `2026-06-27T23:59:00.000Z`
-- Created separate task lists for tasks and milestones
-- Reference by ID in workflow nodes
-
-**Lesson**: Read Google API docs carefully; date formats matter.
-
-### Issue 4: Output Splitting
-
-**Problem**: All events, tasks, and milestones were routed to the same Google Calendar node, causing errors.
-
-**Fix**: Added three **Split** nodes that:
-- Route `events` array → Google Calendar
-- Route `tasks` array → Google Tasks (tasks list)
-- Route `milestones` array → Google Tasks (milestones list)
-
-**Lesson**: Separate your data flows; don't mix APIs.
-
-## Project Structure
-
-```
-study-planner-agent/
-├─ README.md                          # This file
-├─ .gitignore                         # Git ignore rules
-│
-├─ workflow/
-│  └─ study-planner-agent.json       # n8n workflow export (sanitized)
-│
-├─ prompts/
-│  └─ planner_prompt.txt             # LLM system prompt
-│
-├─ code/
-│  └─ parse_llm_output.js            # JavaScript parser node logic
-│
-├─ scripts/
-│  └─ send_week_plan.ps1             # PowerShell test script
-│
-├─ examples/
-│  ├─ sample-week-plan.txt           # Example input
-│  └─ sample-output.json             # Expected LLM output format
-│
-├─ screenshots/
-│  └─ workflow.png                   # Workflow diagram (manual)
-│
-└─ docs/
-   └─ build-notes.md                 # Build and architecture notes
-```
-
-## Security Notes
-
-### Credentials
-
-- **Never commit** `.env`, API keys, or n8n credentials to GitHub
-- Use n8n's built-in **Credentials Manager** to store secrets
-- Credentials are stored locally in `.n8n/` directory (in `.gitignore`)
-
-### Workflow Export
-
-The committed `workflow/study-planner-agent.json` is **sanitized**:
-- Personal email addresses removed
-- Google Task list IDs replaced with placeholders or anonymized
-- Pinned test data removed
-- Credential IDs are n8n-local references (safe in open source)
-
-**If you fork this project**, you must:
-1. Export your own workflow from n8n
-2. Replace the workflow JSON in this repo
-3. Ensure personal data is removed
-4. Set up your own Google credentials
-
-### Groq API
-
-- Free tier available at [groq.com](https://groq.com)
-- API key stored in n8n (not in repo)
-- No cost for this project under free tier
-
-### Google OAuth
-
-- Requires only Calendar and Tasks scopes
-- Your stored Google credentials are local to your n8n instance
-- Not accessible from this public repository
-
-## Current Limitations
-
-- **Local-only**: Requires n8n to be running on your machine
-- **Timezone fixed**: Currently hardcoded to Asia/Kolkata (can be modified in prompt)
-- **Groq LLM**: Uses free Groq API; could be changed to other providers
-- **Weekly scope**: Optimized for one-week plans; monthly/semester planning possible with prompt changes
-
-## Future Improvements
-
-- [ ] Deploy to cloud server (Railway, Render, etc.) for 24/7 webhook availability
-- [ ] Add Telegram bot for remote plan submission
-- [ ] Support multi-week and semester-wide plans
-- [ ] Add plan history and revision tracking
-- [ ] Integrate with GitHub Issues for project management
-- [ ] Support multiple students / shared calendars
-- [ ] Add AI-powered weekly recap and insights
-- [ ] Support multiple LLM providers (GPT-4, Claude, etc.)
 
 ---
 
-**Questions?** See [docs/build-notes.md](docs/build-notes.md) for architecture and troubleshooting details.#   s t u d y - p l a n n e r - a g e n t  
- 
+## Option 3 — Use your own HTTP client
+
+You can also trigger the workflow using:
+
+* Postman
+* curl
+* another script
+* a future Telegram bot / hosted trigger
+
+As long as the request body contains:
+
+```json
+{
+  "plan_text": "your weekly planner text here"
+}
+```
+
+---
+
+# Input and Output Formats
+
+# Input Format
+
+The workflow expects a **POST request** with a JSON body containing:
+
+```json
+{
+  "plan_text": "weekly planner text here"
+}
+```
+
+The `plan_text` should be a planner-style weekly plan written in natural language.
+
+## Example planner input
+
+```text
+WEEK TAG: WEEK-2026-06-25
+
+Thursday 7:45 AM - 9:15 AM: Java Arrays for DSA
+Tasks:
+- revise arrays in Java
+- write array sum program
+- write max/min in array
+
+Thursday 9:45 AM - 11:45 AM: DSA Arrays Foundation
+Tasks:
+- solve 3 array problems
+- write mistake notes
+
+WEEKLY MILESTONES
+- Finish DSA Arrays by Thursday
+- Solve at least 20 DSA problems this week
+```
+
+See:
+
+* `examples/sample-week-plan.txt`
+
+for a fuller example.
+
+---
+
+# Internal LLM Output Format
+
+The LLM is instructed to return a JSON object containing:
+
+* `events`
+* `tasks`
+* `milestones`
+
+## Event format
+
+Each event is expected to look like this:
+
+```json
+{
+  "title": "Java Arrays for DSA",
+  "start": "2026-06-27T07:45:00+05:30",
+  "end": "2026-06-27T09:15:00+05:30",
+  "description": "Revise arrays in Java and practice core programs.",
+  "category": "Java",
+  "location": "",
+  "reminder_minutes": 15
+}
+```
+
+Important:
+
+* `start` and `end` are **ISO 8601 datetime strings**
+* timezone is aligned to **Asia/Kolkata** in the current planner setup
+
+## Task format
+
+Tasks represent actionable work items. Depending on the exact workflow version, tasks may be represented either as:
+
+* simple task strings, or
+* richer task objects before being mapped into Google Tasks fields
+
+In the planner design, tasks semantically represent:
+
+* exercises
+* coding tasks
+* revision items
+* certificate work
+* implementation work
+* small action items tied to the week plan
+
+## Milestone format
+
+Milestones represent:
+
+* weekly goals
+* deadline-based targets
+* completion targets
+* “finish X by Sunday” type outcomes
+
+They are stored in **Google Tasks** rather than Google Calendar.
+
+---
+
+# Debugging History
+
+This project was not built in one shot. A few important issues had to be fixed during setup.
+
+## 1) Timezone mismatch
+
+### Problem
+
+Calendar events initially used the wrong timezone behavior, which caused scheduling confusion.
+
+### Fix
+
+The workflow and planning format were aligned to **Asia/Kolkata**:
+
+* planner prompt
+* event examples
+* calendar event expectations
+
+### Lesson
+
+Always make timezone assumptions explicit when generating calendar events.
+
+---
+
+## 2) LLM JSON formatting issues
+
+### Problem
+
+The model sometimes returned:
+
+* markdown-wrapped JSON
+* extra text after the JSON
+* formatting noise
+
+### Fix
+
+A dedicated **JavaScript cleanup / parse node** was added:
+
+* remove markdown fences
+* isolate the JSON object
+* parse it safely
+* return clean arrays for downstream nodes
+
+### Lesson
+
+Never assume LLM output will always be perfect JSON.
+
+---
+
+## 3) Google Tasks invalid argument issues
+
+### Problem
+
+Google Tasks setup initially caused request / field issues during task creation.
+
+### Fix
+
+The workflow was adjusted so that:
+
+* tasks go through their own Google Tasks branch
+* milestones go through their own Google Tasks branch
+* task list configuration is handled explicitly in the relevant nodes
+
+### Lesson
+
+Tasks and milestones should be treated as separate workflow outputs even if they both end up in Google Tasks.
+
+---
+
+## 4) Split routing was necessary
+
+### Problem
+
+The planner produces three different kinds of outputs:
+
+* events
+* tasks
+* milestones
+
+Those cannot all be pushed to the same destination node.
+
+### Fix
+
+The workflow was split into three branches:
+
+* **events** → Google Calendar
+* **tasks** → Google Tasks
+* **milestones** → Google Tasks
+
+### Lesson
+
+Separate data flows make the workflow more reliable and easier to debug.
+
+---
+
+# Project Structure
+
+```text
+study-planner-agent/
+├─ README.md
+├─ .gitignore
+│
+├─ workflow/
+│  └─ study-planner-agent.json       # Sanitized n8n workflow export
+│
+├─ prompts/
+│  └─ planner_prompt.txt             # LLM system prompt used for plan parsing
+│
+├─ code/
+│  └─ parse_llm_output.js            # Cleanup / parsing logic for LLM output
+│
+├─ scripts/
+│  └─ send_week_plan.ps1             # PowerShell script for local webhook testing
+│
+├─ examples/
+│  ├─ sample-week-plan.txt           # Example planner input
+│  └─ sample-output.json             # Example structured output
+│
+├─ screenshots/
+│  └─ workflow.png                   # Screenshot of the n8n workflow canvas
+│
+└─ docs/
+   └─ build-notes.md                 # Build notes, debugging notes, and architecture notes
+```
+
+---
+
+# Security Notes
+
+## 1) Do not commit secrets
+
+Never commit:
+
+* API keys
+* OAuth client secrets
+* tokens
+* `.env` files with secrets
+* raw n8n credential exports
+
+## 2) n8n credentials should stay local
+
+Use n8n’s credential system to store:
+
+* Groq / LLM API keys
+* Google Calendar OAuth credentials
+* Google Tasks OAuth credentials
+
+These should remain local to your n8n instance.
+
+## 3) Workflow export should be sanitized before GitHub push
+
+Before pushing `workflow/study-planner-agent.json`, remove or sanitize:
+
+* personal email addresses
+* pinned test payloads
+* personal study data that should not be public
+* any unnecessary credential-specific metadata if present
+
+## 4) Credential references in exported workflow
+
+Credential references in the exported workflow are workflow metadata only.
+Actual secrets remain in the local n8n credential store and should never be committed.
+
+---
+
+# Current Limitations
+
+* **Local-first only** — workflow works only when the laptop is on and n8n is running
+* **Webhook is local** — not yet deployed to a public server
+* **Planner setup is currently tuned to Asia/Kolkata**
+* **No Telegram / chat interface yet**
+* **Workflow is optimized for weekly study planning**, not full long-term academic scheduling
+
+---
+
+# Future Improvements
+
+* host the workflow so it works without keeping the laptop on
+* add a Telegram bot for sending weekly plans remotely
+* support multi-week / monthly planning
+* add weekly review summaries and analytics
+* add better duplicate detection for repeated weekly syncs
+* support richer milestone logic and progress tracking
+* support multiple LLM providers
+* build a cleaner UI around the planner input flow
+
+---
+
+# Screenshot
+
+The repository includes a screenshot of the workflow in:
+
+```text
+screenshots/workflow.png
+```
+
+This helps show the actual n8n canvas and overall node structure of the Study Planner Agent workflow.
+
+---
+
+# Final Note
+
+This project is best understood as a **practical AI workflow automation system** for weekly execution, not just a calendar script.
+
+It combines:
+
+* planner design
+* LLM-based structuring
+* workflow automation
+* Google productivity integrations
+
+to reduce the friction of turning a study plan into a real execution system.
